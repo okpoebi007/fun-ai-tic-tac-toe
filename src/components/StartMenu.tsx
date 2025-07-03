@@ -1,11 +1,16 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { settingsService, type GameSettings, type MatchType } from '@/services/settingsService';
 
 interface StartMenuProps {
-  onStartGame: (gameMode: 'single-player' | 'two-player', matchType: MatchType) => void;
+  onStartGame: (
+    gameMode: 'single-player' | 'two-player', 
+    matchType: MatchType,
+    playerNames?: { x: string; o: string }
+  ) => void;
   onShowSettings: () => void;
   settings: GameSettings;
 }
@@ -13,6 +18,33 @@ interface StartMenuProps {
 const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) => {
   const [selectedMode, setSelectedMode] = useState<'single-player' | 'two-player'>('single-player');
   const [selectedMatchType, setSelectedMatchType] = useState<MatchType>('single-game');
+  const [playerNames, setPlayerNames] = useState({
+    x: 'Player 1',
+    o: 'Player 2'
+  });
+  const [showNameInput, setShowNameInput] = useState(false);
+
+  const handleStartGame = () => {
+    if (selectedMode === 'two-player' && selectedMatchType === 'best-of-7' && showNameInput) {
+      onStartGame(selectedMode, selectedMatchType, playerNames);
+    } else {
+      const defaultNames = {
+        x: selectedMode === 'two-player' ? 'Player 1' : 'You',
+        o: selectedMode === 'two-player' ? 'Player 2' : 'AI'
+      };
+      onStartGame(selectedMode, selectedMatchType, defaultNames);
+    }
+  };
+
+  const handleModeChange = (mode: 'single-player' | 'two-player') => {
+    setSelectedMode(mode);
+    setShowNameInput(mode === 'two-player' && selectedMatchType === 'best-of-7');
+  };
+
+  const handleMatchTypeChange = (matchType: MatchType) => {
+    setSelectedMatchType(matchType);
+    setShowNameInput(selectedMode === 'two-player' && matchType === 'best-of-7');
+  };
 
   return (
     <div className="flex flex-col items-center space-y-6 w-full max-w-md mx-auto">
@@ -31,7 +63,7 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
             <div className="space-y-2">
               <Button
                 variant={selectedMode === 'single-player' ? 'default' : 'outline'}
-                onClick={() => setSelectedMode('single-player')}
+                onClick={() => handleModeChange('single-player')}
                 className="w-full justify-start text-left"
               >
                 <div className="flex items-center space-x-3">
@@ -47,7 +79,7 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
               
               <Button
                 variant={selectedMode === 'two-player' ? 'default' : 'outline'}
-                onClick={() => setSelectedMode('two-player')}
+                onClick={() => handleModeChange('two-player')}
                 className="w-full justify-start text-left"
               >
                 <div className="flex items-center space-x-3">
@@ -69,7 +101,7 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
             <div className="space-y-2">
               <Button
                 variant={selectedMatchType === 'single-game' ? 'default' : 'outline'}
-                onClick={() => setSelectedMatchType('single-game')}
+                onClick={() => handleMatchTypeChange('single-game')}
                 className="w-full justify-start text-left"
               >
                 <div className="flex items-center space-x-3">
@@ -85,13 +117,13 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
               
               <Button
                 variant={selectedMatchType === 'best-of-7' ? 'default' : 'outline'}
-                onClick={() => setSelectedMatchType('best-of-7')}
+                onClick={() => handleMatchTypeChange('best-of-7')}
                 className="w-full justify-start text-left"
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-xl">🏆</span>
                   <div>
-                    <div className="font-medium">Best of 7 Match</div>
+                    <div className="font-medium">Best of 7 Series</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
                       First to 4 wins
                     </div>
@@ -100,6 +132,39 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
               </Button>
             </div>
           </div>
+
+          {/* Player Names Input - Only for two-player best-of-7 */}
+          {showNameInput && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Player Names</h3>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="player-x" className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                    Player X Name
+                  </Label>
+                  <Input
+                    id="player-x"
+                    value={playerNames.x}
+                    onChange={(e) => setPlayerNames(prev => ({ ...prev, x: e.target.value }))}
+                    placeholder="Enter Player X name"
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="player-o" className="text-sm font-medium text-red-600 dark:text-red-400">
+                    Player O Name
+                  </Label>
+                  <Input
+                    id="player-o"
+                    value={playerNames.o}
+                    onChange={(e) => setPlayerNames(prev => ({ ...prev, o: e.target.value }))}
+                    placeholder="Enter Player O name"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Icon Style Preview */}
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -120,8 +185,8 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
                 )}
                 {settings.iconStyle === 'modern' && (
                   <>
-                    <span className="text-2xl">✖️</span>
-                    <span className="text-2xl">🔴</span>
+                    <span className="text-2xl text-blue-600">✖</span>
+                    <span className="text-2xl text-red-600">○</span>
                   </>
                 )}
               </div>
@@ -131,7 +196,7 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
           {/* Action Buttons */}
           <div className="space-y-3">
             <Button
-              onClick={() => onStartGame(selectedMode, selectedMatchType)}
+              onClick={handleStartGame}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 text-lg"
             >
               Start Game

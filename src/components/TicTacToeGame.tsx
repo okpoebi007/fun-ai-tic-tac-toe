@@ -7,6 +7,7 @@ import GameStatsComponent from "./GameStats";
 import GamePopup from "./GamePopup";
 import StartMenu from "./StartMenu";
 import RoundDisplay from "./RoundDisplay";
+import FinalResults from "./FinalResults";
 import { getAIMove, checkWin, isDraw, hasWinner, isGameOver } from "@/utils/aiLogic";
 import { enhancedSoundService } from "@/services/enhancedSoundService";
 import { settingsService, type GameSettings, type GameStats, type RoundStats } from "@/services/settingsService";
@@ -14,6 +15,21 @@ import { showInterstitialAd } from "@/services/admob";
 
 export type Player = 'X' | 'O' | '';
 export type Board = Player[];
+
+interface GameState {
+  totalRounds: number;
+  currentRound: number;
+  stats: {
+    xWins: number;
+    oWins: number;
+    draws: number;
+  };
+  gameMode: 'single-player' | 'two-player';
+  playerNames?: {
+    x: string;
+    o: string;
+  };
+}
 
 const TicTacToeGame = () => {
   const [board, setBoard] = useState<Board>(Array(9).fill(''));
@@ -23,7 +39,25 @@ const TicTacToeGame = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [gameResult, setGameResult] = useState('');
   const [showStartMenu, setShowStartMenu] = useState(true);
+  const [showFinalResults, setShowFinalResults] = useState(false);
   const [hasGameOutcome, setHasGameOutcome] = useState(false);
+  
+  // Enhanced game state
+  const [gameState, setGameState] = useState<GameState>({
+    totalRounds: 7,
+    currentRound: 1,
+    stats: {
+      xWins: 0,
+      oWins: 0,
+      draws: 0
+    },
+    gameMode: 'single-player',
+    playerNames: {
+      x: 'Player 1',
+      o: 'Player 2'
+    }
+  });
+
   const [settings, setSettings] = useState<GameSettings>({
     theme: 'light',
     iconStyle: 'classic',
@@ -32,6 +66,7 @@ const TicTacToeGame = () => {
     soundEnabled: true,
     matchType: 'single-game'
   });
+
   const [stats, setStats] = useState<GameStats>({
     gamesPlayed: 0,
     xWins: 0,
@@ -41,6 +76,7 @@ const TicTacToeGame = () => {
     bestWinStreak: 0,
     winPercentage: 0
   });
+
   const [rounds, setRounds] = useState<RoundStats>({
     currentRound: 1,
     maxRounds: 7,
@@ -51,6 +87,7 @@ const TicTacToeGame = () => {
     isMatchComplete: false,
     matchWinner: null
   });
+
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
@@ -80,41 +117,46 @@ const TicTacToeGame = () => {
     setRounds(savedRounds);
   };
 
-  const handleStartGame = (gameMode: 'single-player' | 'two-player', matchType: 'single-game' | 'best-of-7') => {
+  const handleStartGame = (
+    gameMode: 'single-player' | 'two-player', 
+    matchType: 'single-game' | 'best-of-7',
+    playerNames?: { x: string; o: string }
+  ) => {
     const newSettings = { ...settings, gameMode, matchType };
     setSettings(newSettings);
     settingsService.saveSettings(newSettings);
-    setShowStartMenu(false);
     
-    // Reset to clean slate
+    // Initialize game state for best-of-7
+    if (matchType === 'best-of-7') {
+      setGameState({
+        totalRounds: 7,
+        currentRound: 1,
+        stats: {
+          xWins: 0,
+          oWins: 0,
+          draws: 0
+        },
+        gameMode,
+        playerNames: playerNames || {
+          x: gameMode === 'two-player' ? 'Player 1' : 'You',
+          o: gameMode === 'two-player' ? 'Player 2' : 'AI'
+        }
+      });
+    }
+    
+    setShowStartMenu(false);
+    setShowFinalResults(false);
+    resetBoard();
+  };
+
+  const resetBoard = () => {
     setBoard(Array(9).fill(''));
     setGameActive(true);
     setWinningCondition(null);
     setHasGameOutcome(false);
     setShowPopup(false);
     setGameResult('');
-    
-    // Only use round logic for best-of-7 matches
-    if (matchType === 'best-of-7') {
-      // Determine who starts based on previous round winner
-      if (rounds.lastWinner === 'O' && gameMode === 'single-player') {
-        // AI starts if it won last round
-        setCurrentPlayer('O');
-        setTimeout(() => makeAIMove(Array(9).fill('')), 800);
-      } else if (rounds.lastWinner === 'draw') {
-        // Switch starter on draw
-        setCurrentPlayer(rounds.currentRound % 2 === 0 ? 'O' : 'X');
-        if (gameMode === 'single-player' && rounds.currentRound % 2 === 0) {
-          setTimeout(() => makeAIMove(Array(9).fill('')), 800);
-        }
-      } else {
-        // Player X starts by default or if they won
-        setCurrentPlayer('X');
-      }
-    } else {
-      // Single game mode - always start with X
-      setCurrentPlayer('X');
-    }
+    setCurrentPlayer('X');
   };
 
   const handleCellClick = (index: number) => {
@@ -135,7 +177,9 @@ const TicTacToeGame = () => {
         setGameActive(false);
         setHasGameOutcome(true);
         enhancedSoundService.playWin();
-        setTimeout(() => endRound(`${currentPlayer === 'X' ? (settings.gameMode === 'two-player' ? 'Player X' : 'You') : (settings.gameMode === 'two-player' ? 'Player O' : 'AI')} wins this round! 🎉`, currentPlayer as 'X' | 'O'), 600);
+        
+        const winnerName = getPlayerName(currentPlayer);
+        setTimeout(() => endRound(`${winnerName} wins this round! 🎉`, currentPlayer as 'X' | 'O'), 600);
         return;
       }
 
@@ -195,29 +239,61 @@ const TicTacToeGame = () => {
 
   const endRound = async (message: string, winner: 'X' | 'O' | 'draw') => {
     if (settings.matchType === 'best-of-7') {
+      // Update game state stats
+      const newStats = { ...gameState.stats };
+      if (winner === 'X') {
+        newStats.xWins++;
+      } else if (winner === 'O') {
+        newStats.oWins++;
+      } else {
+        newStats.draws++;
+      }
+
+      const newGameState = {
+        ...gameState,
+        stats: newStats,
+        currentRound: gameState.currentRound + 1
+      };
+
+      setGameState(newGameState);
+
+      // Check if series is complete
+      if (newGameState.currentRound > newGameState.totalRounds) {
+        // Series complete - determine winner
+        const { xWins, oWins } = newStats;
+        let seriesWinner: 'X' | 'O' | 'draw';
+        
+        if (xWins > oWins) {
+          seriesWinner = 'X';
+        } else if (oWins > xWins) {
+          seriesWinner = 'O';
+        } else {
+          seriesWinner = 'draw';
+        }
+
+        // Update overall stats
+        await updateGameStats(seriesWinner);
+        
+        // Show final results
+        setTimeout(() => {
+          setShowFinalResults(true);
+        }, 1500);
+        
+        setGameResult(message);
+      } else {
+        // Continue to next round
+        setGameResult(message);
+        
+        // Auto-advance to next round after popup
+        setTimeout(() => {
+          setShowPopup(false);
+          resetBoard();
+        }, winner === 'draw' ? 1500 : 3000);
+      }
+
+      // Update rounds for compatibility with existing system
       const updatedRounds = await settingsService.updateRounds(winner);
       setRounds(updatedRounds);
-
-      if (updatedRounds.isMatchComplete) {
-        // Match is complete, show final result
-        const matchMessage = updatedRounds.matchWinner === 'X' 
-          ? `🏆 ${settings.gameMode === 'two-player' ? 'Player X' : 'You'} won the match! 🏆`
-          : updatedRounds.matchWinner === 'O'
-          ? `🏆 ${settings.gameMode === 'two-player' ? 'Player O' : 'AI'} won the match! 🏆`
-          : "🤝 The match ended in a tie! 🤝";
-        
-        setGameResult(matchMessage);
-        
-        // Update overall stats
-        if (updatedRounds.matchWinner) {
-          await updateGameStats(updatedRounds.matchWinner);
-        } else {
-          // Handle tie case
-          await updateGameStats('draw');
-        }
-      } else {
-        setGameResult(message);
-      }
     } else {
       // Single game mode - update stats immediately
       setGameResult(message);
@@ -233,27 +309,10 @@ const TicTacToeGame = () => {
   };
 
   const nextRound = () => {
-    if (settings.matchType === 'best-of-7' && !rounds.isMatchComplete) {
-      // Start next round
-      setBoard(Array(9).fill(''));
-      setGameActive(true);
-      setWinningCondition(null);
+    if (settings.matchType === 'best-of-7' && !rounds.isMatchComplete && gameState.currentRound <= gameState.totalRounds) {
+      // Continue to next round
       setShowPopup(false);
-      setGameResult('');
-      setHasGameOutcome(false);
-      
-      // Determine starting player for next round
-      if (rounds.lastWinner === 'O' && settings.gameMode === 'single-player') {
-        setCurrentPlayer('O');
-        setTimeout(() => makeAIMove(Array(9).fill('')), 800);
-      } else if (rounds.lastWinner === 'draw') {
-        setCurrentPlayer(rounds.currentRound % 2 === 0 ? 'O' : 'X');
-        if (settings.gameMode === 'single-player' && rounds.currentRound % 2 === 0) {
-          setTimeout(() => makeAIMove(Array(9).fill('')), 800);
-        }
-      } else {
-        setCurrentPlayer('X');
-      }
+      resetBoard();
     } else {
       // End of match or single game
       newGame();
@@ -269,14 +328,25 @@ const TicTacToeGame = () => {
     const newRounds = await settingsService.getRounds();
     setRounds(newRounds);
     
-    setBoard(Array(9).fill(''));
-    setCurrentPlayer('X');
-    setGameActive(true);
-    setWinningCondition(null);
-    setShowPopup(false);
-    setGameResult('');
-    setHasGameOutcome(false);
+    resetBoard();
+    setShowFinalResults(false);
     setShowStartMenu(true);
+    
+    // Reset game state
+    setGameState({
+      totalRounds: 7,
+      currentRound: 1,
+      stats: {
+        xWins: 0,
+        oWins: 0,
+        draws: 0
+      },
+      gameMode: 'single-player',
+      playerNames: {
+        x: 'Player 1',
+        o: 'Player 2'
+      }
+    });
   };
 
   const resetAllStats = async () => {
@@ -293,6 +363,15 @@ const TicTacToeGame = () => {
     enhancedSoundService.setEnabled(newSettings.soundEnabled);
   };
 
+  const getPlayerName = (player: Player): string => {
+    if (player === 'X') {
+      return gameState.playerNames?.x || (settings.gameMode === 'two-player' ? 'Player X' : 'You');
+    } else if (player === 'O') {
+      return gameState.playerNames?.o || (settings.gameMode === 'two-player' ? 'Player O' : 'AI');
+    }
+    return '';
+  };
+
   const getDifficultyDisplay = () => {
     if (settings.gameMode === 'two-player') return 'Two Players';
     return `AI: ${settings.aiDifficulty.charAt(0).toUpperCase() + settings.aiDifficulty.slice(1)}`;
@@ -303,12 +382,19 @@ const TicTacToeGame = () => {
       return settings.matchType === 'best-of-7' ? "Round Over" : "Game Over";
     }
     
-    if (settings.gameMode === 'two-player') {
-      return `Player ${currentPlayer}'s turn`;
-    }
-    
-    return currentPlayer === 'X' ? "Your turn" : "AI is thinking...";
+    return `${getPlayerName(currentPlayer)}'s turn`;
   };
+
+  // Show final results if series is complete
+  if (showFinalResults && settings.matchType === 'best-of-7') {
+    return (
+      <FinalResults
+        gameState={gameState}
+        onNewGame={newGame}
+        onBackToMenu={() => setShowStartMenu(true)}
+      />
+    );
+  }
 
   // Show start menu if requested
   if (showStartMenu) {
@@ -355,7 +441,7 @@ const TicTacToeGame = () => {
           </div>
           {settings.matchType === 'best-of-7' && (
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Best of 7 Match
+              Round {gameState.currentRound} of {gameState.totalRounds}
             </div>
           )}
         </div>
@@ -373,32 +459,70 @@ const TicTacToeGame = () => {
 
       {/* Round Display - Only show for best-of-7 matches */}
       {settings.matchType === 'best-of-7' && (
-        <RoundDisplay rounds={rounds} gameMode={settings.gameMode} />
+        <Card className="p-4 w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+          <div className="space-y-3">
+            <div className="text-center">
+              <div className="text-sm text-gray-600 dark:text-gray-400">Best of 7 Series</div>
+              <div className="text-lg font-bold text-gray-800 dark:text-white">
+                Round {gameState.currentRound} of {gameState.totalRounds}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="space-y-1">
+                <div className="text-blue-600 dark:text-blue-400 font-semibold">
+                  {getPlayerName('X')}
+                </div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {gameState.stats.xWins}
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="text-gray-600 dark:text-gray-300 font-semibold">Draws</div>
+                <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">
+                  {gameState.stats.draws}
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="text-red-600 dark:text-red-400 font-semibold">
+                  {getPlayerName('O')}
+                </div>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  {gameState.stats.oWins}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
 
       <Card className="p-6 w-full shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
         <div className="text-center space-y-4">
-          {/* Current game stats */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-sm">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="space-y-1">
-                <div className="text-blue-600 dark:text-blue-400 font-semibold">
-                  {settings.gameMode === 'two-player' ? 'Player X' : 'You (X)'}
+          {/* Current game stats for single games */}
+          {settings.matchType === 'single-game' && (
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-sm">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="space-y-1">
+                  <div className="text-blue-600 dark:text-blue-400 font-semibold">
+                    {settings.gameMode === 'two-player' ? 'Player X' : 'You (X)'}
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.xWins}</div>
                 </div>
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.xWins}</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-gray-600 dark:text-gray-300 font-semibold">Draws</div>
-                <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{stats.draws}</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-red-600 dark:text-red-400 font-semibold">
-                  {settings.gameMode === 'two-player' ? 'Player O' : 'AI (O)'}
+                <div className="space-y-1">
+                  <div className="text-gray-600 dark:text-gray-300 font-semibold">Draws</div>
+                  <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{stats.draws}</div>
                 </div>
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.oWins}</div>
+                <div className="space-y-1">
+                  <div className="text-red-600 dark:text-red-400 font-semibold">
+                    {settings.gameMode === 'two-player' ? 'Player O' : 'AI (O)'}
+                  </div>
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.oWins}</div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
           <div className="text-lg font-medium text-gray-700 dark:text-gray-300">
             {getCurrentPlayerDisplay()}
@@ -428,7 +552,7 @@ const TicTacToeGame = () => {
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {hasGameOutcome ? 
-                (settings.matchType === 'best-of-7' && !rounds.isMatchComplete ? '▶️ Next Round' : '🔄 New Game') 
+                (settings.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds ? '▶️ Next Round' : '🔄 New Game') 
                 : '🔄 New Game'
               }
             </Button>
@@ -449,6 +573,7 @@ const TicTacToeGame = () => {
         show={showPopup}
         message={gameResult}
         onClose={() => setShowPopup(false)}
+        autoCloseDelay={gameResult.includes("draw") ? 1500 : 3000}
       />
 
       {/* Settings Modal */}
