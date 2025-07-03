@@ -181,12 +181,13 @@ class SettingsService {
       lastWinner: winner
     };
 
-    // Update round wins
+    // Update round wins based on winner
     if (winner === 'X') {
       newRounds.xRoundWins = currentRounds.xRoundWins + 1;
     } else if (winner === 'O') {
       newRounds.oRoundWins = currentRounds.oRoundWins + 1;
     } else {
+      // Handle draw case
       newRounds.roundDraws = currentRounds.roundDraws + 1;
     }
 
@@ -197,6 +198,17 @@ class SettingsService {
     } else if (newRounds.oRoundWins >= 4) {
       newRounds.isMatchComplete = true;
       newRounds.matchWinner = 'O';
+    } else if (newRounds.currentRound >= 7) {
+      // All 7 rounds completed, determine winner by most wins
+      newRounds.isMatchComplete = true;
+      if (newRounds.xRoundWins > newRounds.oRoundWins) {
+        newRounds.matchWinner = 'X';
+      } else if (newRounds.oRoundWins > newRounds.xRoundWins) {
+        newRounds.matchWinner = 'O';
+      } else {
+        // Tie case - no winner
+        newRounds.matchWinner = null;
+      }
     } else {
       // Advance to next round
       newRounds.currentRound = currentRounds.currentRound + 1;

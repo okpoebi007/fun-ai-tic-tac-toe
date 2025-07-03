@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -6,29 +5,52 @@ interface GamePopupProps {
   show: boolean;
   message: string;
   onClose: () => void;
+  autoCloseDelay?: number;
 }
 
-const GamePopup = ({ show, message, onClose }: GamePopupProps) => {
+const GamePopup = ({ show, message, onClose, autoCloseDelay = 3000 }: GamePopupProps) => {
   useEffect(() => {
     if (show) {
+      // Auto-close after specified delay (1.5 seconds for draws, 3 seconds for others)
+      const delay = message.includes("draw") ? 1500 : autoCloseDelay;
       const timer = setTimeout(() => {
         onClose();
-      }, 3000);
+      }, delay);
       return () => clearTimeout(timer);
     }
-  }, [show, onClose]);
+  }, [show, onClose, message, autoCloseDelay]);
 
   if (!show) return null;
 
+  const isDraw = message.includes("draw");
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-xl animate-in zoom-in-50 duration-300">
-        <div className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">
+      <div className={`bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-xl animate-in zoom-in-50 duration-300 ${
+        isDraw ? 'border-2 border-yellow-400' : ''
+      }`}>
+        <div className={`text-2xl font-bold mb-4 ${
+          isDraw 
+            ? 'text-yellow-600 dark:text-yellow-400' 
+            : 'text-gray-800 dark:text-white'
+        }`}>
           {message}
         </div>
+        
+        {/* Show different styling for draw messages */}
+        {isDraw && (
+          <div className="text-sm text-yellow-600 dark:text-yellow-400 mb-4">
+            All squares filled - no winner this round!
+          </div>
+        )}
+        
         <Button
           onClick={onClose}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+          className={`px-6 py-2 rounded-lg ${
+            isDraw 
+              ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
         >
           Continue
         </Button>

@@ -7,7 +7,7 @@ import GameStatsComponent from "./GameStats";
 import GamePopup from "./GamePopup";
 import StartMenu from "./StartMenu";
 import RoundDisplay from "./RoundDisplay";
-import { getAIMove, checkWin, isGameOver } from "@/utils/aiLogic";
+import { getAIMove, checkWin, isDraw, hasWinner, isGameOver } from "@/utils/aiLogic";
 import { enhancedSoundService } from "@/services/enhancedSoundService";
 import { settingsService, type GameSettings, type GameStats, type RoundStats } from "@/services/settingsService";
 import { showInterstitialAd } from "@/services/admob";
@@ -128,6 +128,7 @@ const TicTacToeGame = () => {
       newBoard[index] = currentPlayer;
       setBoard(newBoard);
 
+      // Check for win condition first
       const winCondition = checkWin(newBoard, currentPlayer);
       if (winCondition) {
         setWinningCondition(winCondition);
@@ -138,11 +139,12 @@ const TicTacToeGame = () => {
         return;
       }
 
-      if (isGameOver(newBoard)) {
+      // Enhanced draw detection
+      if (isDraw(newBoard)) {
         setGameActive(false);
         setHasGameOutcome(true);
         enhancedSoundService.playDraw();
-        setTimeout(() => endRound("Round draw! 🤝", 'draw'), 600);
+        setTimeout(() => endRound("It's a draw! 🤝", 'draw'), 600);
         return;
       }
 
@@ -167,6 +169,7 @@ const TicTacToeGame = () => {
       newBoard[move] = 'O';
       setBoard(newBoard);
 
+      // Check for AI win
       const winCondition = checkWin(newBoard, 'O');
       if (winCondition) {
         setWinningCondition(winCondition);
@@ -177,11 +180,12 @@ const TicTacToeGame = () => {
         return;
       }
 
-      if (isGameOver(newBoard)) {
+      // Enhanced draw detection for AI moves
+      if (isDraw(newBoard)) {
         setGameActive(false);
         setHasGameOutcome(true);
         enhancedSoundService.playDraw();
-        setTimeout(() => endRound("Round draw! 🤝", 'draw'), 600);
+        setTimeout(() => endRound("It's a draw! 🤝", 'draw'), 600);
         return;
       }
 
@@ -198,13 +202,18 @@ const TicTacToeGame = () => {
         // Match is complete, show final result
         const matchMessage = updatedRounds.matchWinner === 'X' 
           ? `🏆 ${settings.gameMode === 'two-player' ? 'Player X' : 'You'} won the match! 🏆`
-          : `🏆 ${settings.gameMode === 'two-player' ? 'Player O' : 'AI'} won the match! 🏆`;
+          : updatedRounds.matchWinner === 'O'
+          ? `🏆 ${settings.gameMode === 'two-player' ? 'Player O' : 'AI'} won the match! 🏆`
+          : "🤝 The match ended in a tie! 🤝";
         
         setGameResult(matchMessage);
         
         // Update overall stats
         if (updatedRounds.matchWinner) {
           await updateGameStats(updatedRounds.matchWinner);
+        } else {
+          // Handle tie case
+          await updateGameStats('draw');
         }
       } else {
         setGameResult(message);
@@ -221,6 +230,34 @@ const TicTacToeGame = () => {
   const updateGameStats = async (winner: 'X' | 'O' | 'draw') => {
     const newStats = await settingsService.updateStats(winner);
     setStats(newStats);
+  };
+
+  const nextRound = () => {
+    if (settings.matchType === 'best-of-7' && !rounds.isMatchComplete) {
+      // Start next round
+      setBoard(Array(9).fill(''));
+      setGameActive(true);
+      setWinningCondition(null);
+      setShowPopup(false);
+      setGameResult('');
+      setHasGameOutcome(false);
+      
+      // Determine starting player for next round
+      if (rounds.lastWinner === 'O' && settings.gameMode === 'single-player') {
+        setCurrentPlayer('O');
+        setTimeout(() => makeAIMove(Array(9).fill('')), 800);
+      } else if (rounds.lastWinner === 'draw') {
+        setCurrentPlayer(rounds.currentRound % 2 === 0 ? 'O' : 'X');
+        if (settings.gameMode === 'single-player' && rounds.currentRound % 2 === 0) {
+          setTimeout(() => makeAIMove(Array(9).fill('')), 800);
+        }
+      } else {
+        setCurrentPlayer('X');
+      }
+    } else {
+      // End of match or single game
+      newGame();
+    }
   };
 
   const newGame = async () => {
@@ -386,11 +423,14 @@ const TicTacToeGame = () => {
           
           <div className="flex space-x-2">
             <Button 
-              onClick={newGame}
-              disabled={!hasGameOutcome}
+              onClick={hasGameOutcome ? nextRound : newGame}
+              disabled={!hasGameOutcome && gameActive}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              🔄 New Game
+              {hasGameOutcome ? 
+                (settings.matchType === 'best-of-7' && !rounds.isMatchComplete ? '▶️ Next Round' : '🔄 New Game') 
+                : '🔄 New Game'
+              }
             </Button>
             
             <Button 
