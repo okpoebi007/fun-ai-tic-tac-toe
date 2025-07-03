@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GameStats } from "@/services/settingsService";
@@ -7,15 +6,48 @@ interface GameStatsProps {
   stats: GameStats;
   onClose: () => void;
   onResetStats: () => void;
+  gameState?: {
+    totalRounds: number;
+    currentRound: number;
+    stats: {
+      xWins: number;
+      oWins: number;
+      draws: number;
+    };
+    gameMode: 'single-player' | 'two-player';
+    playerNames?: {
+      x: string;
+      o: string;
+    };
+  };
+  matchType?: 'single-game' | 'best-of-7';
 }
 
-const GameStatsComponent = ({ stats, onClose, onResetStats }: GameStatsProps) => {
+const GameStatsComponent = ({ 
+  stats, 
+  onClose, 
+  onResetStats, 
+  gameState, 
+  matchType = 'single-game' 
+}: GameStatsProps) => {
+  const getPlayerName = (player: 'x' | 'o'): string => {
+    if (gameState?.playerNames) {
+      return gameState.playerNames[player];
+    }
+    if (gameState?.gameMode === 'two-player') {
+      return player === 'x' ? 'Player X' : 'Player O';
+    }
+    return player === 'x' ? 'You' : 'AI';
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md p-6 bg-white dark:bg-gray-800">
+      <Card className="w-full max-w-md p-6 bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Game Statistics</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+              {matchType === 'best-of-7' ? 'Series Statistics' : 'Game Statistics'}
+            </h2>
             <Button
               variant="outline"
               size="sm"
@@ -26,25 +58,75 @@ const GameStatsComponent = ({ stats, onClose, onResetStats }: GameStatsProps) =>
             </Button>
           </div>
 
-          {/* Overall Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {stats.gamesPlayed}
+          {/* Current Series Stats (for best-of-7) */}
+          {matchType === 'best-of-7' && gameState && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Current Series</h3>
+              
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <div className="text-center space-y-2">
+                  <div className="text-sm text-blue-600 dark:text-blue-400">
+                    Round {gameState.currentRound} of {gameState.totalRounds}
+                  </div>
+                  <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    Best of 7 Series
+                  </div>
+                </div>
               </div>
-              <div className="text-sm text-blue-600 dark:text-blue-400">Games Played</div>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {stats.winPercentage}%
-              </div>
-              <div className="text-sm text-green-600 dark:text-green-400">Win Rate</div>
-            </div>
-          </div>
 
-          {/* Win Stats */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Results</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {gameState.stats.xWins}
+                  </div>
+                  <div className="text-sm text-blue-600 dark:text-blue-400">
+                    {getPlayerName('x')}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                    {gameState.stats.draws}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Draws</div>
+                </div>
+                
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    {gameState.stats.oWins}
+                  </div>
+                  <div className="text-sm text-red-600 dark:text-red-400">
+                    {getPlayerName('o')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Overall Stats */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+              {matchType === 'best-of-7' ? 'Overall Statistics' : 'Statistics'}
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {stats.gamesPlayed}
+                </div>
+                <div className="text-sm text-blue-600 dark:text-blue-400">
+                  {matchType === 'best-of-7' ? 'Series Played' : 'Games Played'}
+                </div>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {stats.winPercentage}%
+                </div>
+                <div className="text-sm text-green-600 dark:text-green-400">Win Rate</div>
+              </div>
+            </div>
+
+            {/* Win Stats */}
             <div className="space-y-2">
               <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <div className="flex items-center space-x-2">

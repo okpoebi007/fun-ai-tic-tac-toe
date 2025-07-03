@@ -6,7 +6,6 @@ import GameSettingsModal from "./GameSettings";
 import GameStatsComponent from "./GameStats";
 import GamePopup from "./GamePopup";
 import StartMenu from "./StartMenu";
-import RoundDisplay from "./RoundDisplay";
 import FinalResults from "./FinalResults";
 import { getAIMove, checkWin, isDraw, hasWinner, isGameOver } from "@/utils/aiLogic";
 import { enhancedSoundService } from "@/services/enhancedSoundService";
@@ -42,7 +41,7 @@ const TicTacToeGame = () => {
   const [showFinalResults, setShowFinalResults] = useState(false);
   const [hasGameOutcome, setHasGameOutcome] = useState(false);
   
-  // Enhanced game state
+  // Enhanced game state for best-of-7 series
   const [gameState, setGameState] = useState<GameState>({
     totalRounds: 7,
     currentRound: 1,
@@ -159,6 +158,29 @@ const TicTacToeGame = () => {
     setCurrentPlayer('X');
   };
 
+  const resetGame = () => {
+    resetBoard();
+    if (settings.matchType === 'best-of-7') {
+      setGameState(prev => ({
+        ...prev,
+        currentRound: 1,
+        stats: {
+          xWins: 0,
+          oWins: 0,
+          draws: 0
+        }
+      }));
+    }
+  };
+
+  const nextRound = () => {
+    if (settings.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds) {
+      resetBoard();
+    } else {
+      newGame();
+    }
+  };
+
   const handleCellClick = (index: number) => {
     if (board[index] !== '' || !gameActive) return;
 
@@ -183,7 +205,7 @@ const TicTacToeGame = () => {
         return;
       }
 
-      // Enhanced draw detection
+      // Enhanced draw detection using the new isDraw function
       if (isDraw(newBoard)) {
         setGameActive(false);
         setHasGameOutcome(true);
@@ -257,7 +279,7 @@ const TicTacToeGame = () => {
 
       setGameState(newGameState);
 
-      // Check if series is complete
+      // Check if series is complete (7 rounds played)
       if (newGameState.currentRound > newGameState.totalRounds) {
         // Series complete - determine winner
         const { xWins, oWins } = newStats;
@@ -274,21 +296,22 @@ const TicTacToeGame = () => {
         // Update overall stats
         await updateGameStats(seriesWinner);
         
-        // Show final results
+        // Show final results after popup closes
         setTimeout(() => {
+          setShowPopup(false);
           setShowFinalResults(true);
-        }, 1500);
+        }, message.includes("draw") ? 1500 : 3000);
         
         setGameResult(message);
       } else {
         // Continue to next round
         setGameResult(message);
         
-        // Auto-advance to next round after popup
+        // Auto-advance to next round after popup (1.5s for draws, 3s for wins)
         setTimeout(() => {
           setShowPopup(false);
           resetBoard();
-        }, winner === 'draw' ? 1500 : 3000);
+        }, message.includes("draw") ? 1500 : 3000);
       }
 
       // Update rounds for compatibility with existing system
@@ -306,17 +329,6 @@ const TicTacToeGame = () => {
   const updateGameStats = async (winner: 'X' | 'O' | 'draw') => {
     const newStats = await settingsService.updateStats(winner);
     setStats(newStats);
-  };
-
-  const nextRound = () => {
-    if (settings.matchType === 'best-of-7' && !rounds.isMatchComplete && gameState.currentRound <= gameState.totalRounds) {
-      // Continue to next round
-      setShowPopup(false);
-      resetBoard();
-    } else {
-      // End of match or single game
-      newGame();
-    }
   };
 
   const newGame = async () => {
@@ -457,7 +469,7 @@ const TicTacToeGame = () => {
         </Button>
       </div>
 
-      {/* Round Display - Only show for best-of-7 matches */}
+      {/* Series Display - Only show for best-of-7 matches */}
       {settings.matchType === 'best-of-7' && (
         <Card className="p-4 w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
           <div className="space-y-3">
@@ -547,13 +559,13 @@ const TicTacToeGame = () => {
           
           <div className="flex space-x-2">
             <Button 
-              onClick={hasGameOutcome ? nextRound : newGame}
+              onClick={hasGameOutcome ? nextRound : resetGame}
               disabled={!hasGameOutcome && gameActive}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {hasGameOutcome ? 
                 (settings.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds ? '▶️ Next Round' : '🔄 New Game') 
-                : '🔄 New Game'
+                : '🔄 Reset Game'
               }
             </Button>
             
@@ -589,6 +601,8 @@ const TicTacToeGame = () => {
       {showStats && (
         <GameStatsComponent
           stats={stats}
+          gameState={gameState}
+          matchType={settings.matchType}
           onClose={() => setShowStats(false)}
           onResetStats={resetAllStats}
         />

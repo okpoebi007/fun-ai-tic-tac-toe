@@ -23,15 +23,20 @@ const GamePopup = ({ show, message, onClose, autoCloseDelay = 3000 }: GamePopupP
   if (!show) return null;
 
   const isDraw = message.includes("draw");
+  const isSeriesComplete = message.includes("series") || message.includes("match");
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-xl animate-in zoom-in-50 duration-300 ${
-        isDraw ? 'border-2 border-yellow-400' : ''
+      <div className={`bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-xl animate-in zoom-in-50 duration-300 max-w-sm w-full ${
+        isDraw ? 'border-2 border-yellow-400' : 
+        isSeriesComplete ? 'border-2 border-purple-400' : 
+        'border-2 border-blue-400'
       }`}>
         <div className={`text-2xl font-bold mb-4 ${
           isDraw 
             ? 'text-yellow-600 dark:text-yellow-400' 
+            : isSeriesComplete
+            ? 'text-purple-600 dark:text-purple-400'
             : 'text-gray-800 dark:text-white'
         }`}>
           {message}
@@ -44,11 +49,20 @@ const GamePopup = ({ show, message, onClose, autoCloseDelay = 3000 }: GamePopupP
           </div>
         )}
         
+        {/* Show series completion info */}
+        {isSeriesComplete && (
+          <div className="text-sm text-purple-600 dark:text-purple-400 mb-4">
+            Best of 7 series complete!
+          </div>
+        )}
+        
         <Button
           onClick={onClose}
           className={`px-6 py-2 rounded-lg ${
             isDraw 
               ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+              : isSeriesComplete
+              ? 'bg-purple-600 hover:bg-purple-700 text-white'
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}
         >

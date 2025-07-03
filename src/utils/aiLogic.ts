@@ -18,28 +18,27 @@ export const checkWin = (board: Board, player: Player): number[] | null => {
   return null;
 };
 
-// Enhanced draw detection with explicit checks
+// Enhanced draw detection - checks if all cells filled AND no winner exists
 export const isDraw = (board: Board): boolean => {
   // First check if all cells are filled
   const allCellsFilled = board.every(cell => cell !== '');
   
   // Then verify no winning combinations exist for either player
-  const hasWinner = checkWin(board, 'X') !== null || checkWin(board, 'O') !== null;
+  const hasWinnerX = checkWin(board, 'X') !== null;
+  const hasWinnerO = checkWin(board, 'O') !== null;
   
   // It's a draw if all cells are filled AND no winner exists
-  return allCellsFilled && !hasWinner;
-};
-
-// Enhanced game over detection
-export const isGameOver = (board: Board): boolean => {
-  return checkWin(board, 'X') !== null || 
-         checkWin(board, 'O') !== null || 
-         isDraw(board);
+  return allCellsFilled && !hasWinnerX && !hasWinnerO;
 };
 
 // Check if game has a winner (not a draw)
 export const hasWinner = (board: Board): boolean => {
   return checkWin(board, 'X') !== null || checkWin(board, 'O') !== null;
+};
+
+// Enhanced game over detection
+export const isGameOver = (board: Board): boolean => {
+  return hasWinner(board) || isDraw(board);
 };
 
 export const getEmptyIndices = (board: Board): number[] => {
