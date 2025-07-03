@@ -28,7 +28,7 @@ const GamePopup = ({ show, message, onClose, autoCloseDelay = 3000 }: GamePopupP
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`bg-white dark:bg-gray-800 rounded-lg p-6 text-center shadow-xl animate-in zoom-in-50 duration-300 max-w-sm w-full ${
-        isDraw ? 'border-2 border-yellow-400' : 
+        isDraw ? 'border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : 
         isSeriesComplete ? 'border-2 border-purple-400' : 
         'border-2 border-blue-400'
       }`}>
@@ -52,7 +52,7 @@ const GamePopup = ({ show, message, onClose, autoCloseDelay = 3000 }: GamePopupP
         {/* Show series completion info */}
         {isSeriesComplete && (
           <div className="text-sm text-purple-600 dark:text-purple-400 mb-4">
-            Best of 7 series complete!
+            Series complete!
           </div>
         )}
         

@@ -9,6 +9,7 @@ interface StartMenuProps {
   onStartGame: (
     gameMode: 'single-player' | 'two-player', 
     matchType: MatchType,
+    totalRounds?: number,
     playerNames?: { x: string; o: string }
   ) => void;
   onShowSettings: () => void;
@@ -18,21 +19,24 @@ interface StartMenuProps {
 const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) => {
   const [selectedMode, setSelectedMode] = useState<'single-player' | 'two-player'>('single-player');
   const [selectedMatchType, setSelectedMatchType] = useState<MatchType>('single-game');
+  const [selectedRounds, setSelectedRounds] = useState<number>(7);
   const [playerNames, setPlayerNames] = useState({
     x: 'Player 1',
     o: 'Player 2'
   });
   const [showNameInput, setShowNameInput] = useState(false);
 
+  const roundOptions = [3, 5, 7, 9];
+
   const handleStartGame = () => {
     if (selectedMode === 'two-player' && selectedMatchType === 'best-of-7' && showNameInput) {
-      onStartGame(selectedMode, selectedMatchType, playerNames);
+      onStartGame(selectedMode, selectedMatchType, selectedRounds, playerNames);
     } else {
       const defaultNames = {
         x: selectedMode === 'two-player' ? 'Player 1' : 'You',
         o: selectedMode === 'two-player' ? 'Player 2' : 'AI'
       };
-      onStartGame(selectedMode, selectedMatchType, defaultNames);
+      onStartGame(selectedMode, selectedMatchType, selectedRounds, defaultNames);
     }
   };
 
@@ -123,9 +127,9 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
                 <div className="flex items-center space-x-3">
                   <span className="text-xl">🏆</span>
                   <div>
-                    <div className="font-medium">Best of 7 Series</div>
+                    <div className="font-medium">Best of X Series</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      First to 4 wins
+                      First to win majority
                     </div>
                   </div>
                 </div>
@@ -133,7 +137,32 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
             </div>
           </div>
 
-          {/* Player Names Input - Only for two-player best-of-7 */}
+          {/* Round Selection - Only for best-of-X */}
+          {selectedMatchType === 'best-of-7' && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Number of Rounds</h3>
+              <div className="grid grid-cols-4 gap-2">
+                {roundOptions.map((rounds) => (
+                  <Button
+                    key={rounds}
+                    variant={selectedRounds === rounds ? 'default' : 'outline'}
+                    onClick={() => setSelectedRounds(rounds)}
+                    className="text-center"
+                  >
+                    <div>
+                      <div className="font-bold">{rounds}</div>
+                      <div className="text-xs">rounds</div>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+              <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                First to {Math.ceil(selectedRounds / 2)} wins
+              </div>
+            </div>
+          )}
+
+          {/* Player Names Input - Only for two-player best-of-X */}
           {showNameInput && (
             <div className="space-y-3">
               <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Player Names</h3>

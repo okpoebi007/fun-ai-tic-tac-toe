@@ -41,7 +41,7 @@ const TicTacToeGame = () => {
   const [showFinalResults, setShowFinalResults] = useState(false);
   const [hasGameOutcome, setHasGameOutcome] = useState(false);
   
-  // Enhanced game state for best-of-7 series
+  // Enhanced game state for best-of-X series
   const [gameState, setGameState] = useState<GameState>({
     totalRounds: 7,
     currentRound: 1,
@@ -119,16 +119,17 @@ const TicTacToeGame = () => {
   const handleStartGame = (
     gameMode: 'single-player' | 'two-player', 
     matchType: 'single-game' | 'best-of-7',
+    totalRounds: number = 7,
     playerNames?: { x: string; o: string }
   ) => {
     const newSettings = { ...settings, gameMode, matchType };
     setSettings(newSettings);
     settingsService.saveSettings(newSettings);
     
-    // Initialize game state for best-of-7
+    // Initialize game state for series
     if (matchType === 'best-of-7') {
       setGameState({
-        totalRounds: 7,
+        totalRounds,
         currentRound: 1,
         stats: {
           xWins: 0,
@@ -279,7 +280,7 @@ const TicTacToeGame = () => {
 
       setGameState(newGameState);
 
-      // Check if series is complete (7 rounds played)
+      // Check if series is complete (all rounds played)
       if (newGameState.currentRound > newGameState.totalRounds) {
         // Series complete - determine winner
         const { xWins, oWins } = newStats;
@@ -384,6 +385,18 @@ const TicTacToeGame = () => {
     return '';
   };
 
+  const getPlayerIcon = (player: 'X' | 'O'): string => {
+    switch (settings.iconStyle) {
+      case 'emoji':
+        return player === 'X' ? '❌' : '⭕';
+      case 'modern':
+        return player === 'X' ? '✖' : '○';
+      case 'classic':
+      default:
+        return player;
+    }
+  };
+
   const getDifficultyDisplay = () => {
     if (settings.gameMode === 'two-player') return 'Two Players';
     return `AI: ${settings.aiDifficulty.charAt(0).toUpperCase() + settings.aiDifficulty.slice(1)}`;
@@ -451,11 +464,6 @@ const TicTacToeGame = () => {
           <div className="text-sm text-gray-600 dark:text-gray-400">
             {getDifficultyDisplay()}
           </div>
-          {settings.matchType === 'best-of-7' && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Round {gameState.currentRound} of {gameState.totalRounds}
-            </div>
-          )}
         </div>
 
         <Button
@@ -469,41 +477,54 @@ const TicTacToeGame = () => {
         </Button>
       </div>
 
-      {/* Series Display - Only show for best-of-7 matches */}
+      {/* Top Player Bar - Only show for best-of-7 matches */}
       {settings.matchType === 'best-of-7' && (
-        <Card className="p-4 w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <div className="space-y-3">
-            <div className="text-center">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Best of 7 Series</div>
-              <div className="text-lg font-bold text-gray-800 dark:text-white">
-                Round {gameState.currentRound} of {gameState.totalRounds}
+        <Card className="p-4 w-full bg-gradient-to-r from-blue-50 via-gray-50 to-red-50 dark:from-blue-900/20 dark:via-gray-800 dark:to-red-900/20">
+          <div className="flex items-center justify-between">
+            {/* Player 1 (X) */}
+            <div className="flex items-center space-x-3 flex-1">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  {getPlayerIcon('X')}
+                </span>
               </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="space-y-1">
-                <div className="text-blue-600 dark:text-blue-400 font-semibold">
+              <div className="text-left">
+                <div className="font-semibold text-blue-600 dark:text-blue-400 text-sm">
                   {getPlayerName('X')}
                 </div>
                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {gameState.stats.xWins}
                 </div>
               </div>
-              
-              <div className="space-y-1">
-                <div className="text-gray-600 dark:text-gray-300 font-semibold">Draws</div>
-                <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">
-                  {gameState.stats.draws}
-                </div>
+            </div>
+
+            {/* Center Round Tracker */}
+            <div className="text-center px-4">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Best of {gameState.totalRounds}
               </div>
-              
-              <div className="space-y-1">
-                <div className="text-red-600 dark:text-red-400 font-semibold">
+              <div className="text-lg font-bold text-gray-800 dark:text-white">
+                Round {gameState.currentRound}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {gameState.stats.draws} draws
+              </div>
+            </div>
+
+            {/* Player 2 (O) */}
+            <div className="flex items-center space-x-3 flex-1 justify-end">
+              <div className="text-right">
+                <div className="font-semibold text-red-600 dark:text-red-400 text-sm">
                   {getPlayerName('O')}
                 </div>
                 <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {gameState.stats.oWins}
                 </div>
+              </div>
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <span className="text-xl font-bold text-red-600 dark:text-red-400">
+                  {getPlayerIcon('O')}
+                </span>
               </div>
             </div>
           </div>
