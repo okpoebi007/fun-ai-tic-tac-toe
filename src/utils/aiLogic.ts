@@ -41,6 +41,11 @@ export const isGameOver = (board: Board): boolean => {
   return hasWinner(board) || isDraw(board);
 };
 
+// Check if board is full (all cells occupied)
+export const isBoardFull = (board: Board): boolean => {
+  return board.every(cell => cell !== '');
+};
+
 export const getEmptyIndices = (board: Board): number[] => {
   return board.map((cell, index) => cell === '' ? index : null)
              .filter(index => index !== null) as number[];

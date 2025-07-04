@@ -7,7 +7,7 @@ import GameStatsComponent from "./GameStats";
 import GamePopup from "./GamePopup";
 import StartMenu from "./StartMenu";
 import FinalResults from "./FinalResults";
-import { getAIMove, checkWin, isDraw, hasWinner, isGameOver } from "@/utils/aiLogic";
+import { getAIMove, checkWin, isDraw, hasWinner, isGameOver, isBoardFull } from "@/utils/aiLogic";
 import { enhancedSoundService } from "@/services/enhancedSoundService";
 import { settingsService, type GameSettings, type GameStats, type RoundStats } from "@/services/settingsService";
 import { showInterstitialAd } from "@/services/admob";
@@ -40,6 +40,7 @@ const TicTacToeGame = () => {
   const [showStartMenu, setShowStartMenu] = useState(true);
   const [showFinalResults, setShowFinalResults] = useState(false);
   const [hasGameOutcome, setHasGameOutcome] = useState(false);
+  const [isDrawResult, setIsDrawResult] = useState(false);
   
   // Enhanced game state for best-of-X series
   const [gameState, setGameState] = useState<GameState>({
@@ -157,6 +158,7 @@ const TicTacToeGame = () => {
     setShowPopup(false);
     setGameResult('');
     setCurrentPlayer('X');
+    setIsDrawResult(false);
   };
 
   const resetGame = () => {
@@ -206,10 +208,11 @@ const TicTacToeGame = () => {
         return;
       }
 
-      // Enhanced draw detection using the new isDraw function
+      // Enhanced draw detection using the improved isDraw function
       if (isDraw(newBoard)) {
         setGameActive(false);
         setHasGameOutcome(true);
+        setIsDrawResult(true);
         enhancedSoundService.playDraw();
         setTimeout(() => endRound("It's a draw! 🤝", 'draw'), 600);
         return;
@@ -251,6 +254,7 @@ const TicTacToeGame = () => {
       if (isDraw(newBoard)) {
         setGameActive(false);
         setHasGameOutcome(true);
+        setIsDrawResult(true);
         enhancedSoundService.playDraw();
         setTimeout(() => endRound("It's a draw! 🤝", 'draw'), 600);
         return;
@@ -301,7 +305,7 @@ const TicTacToeGame = () => {
         setTimeout(() => {
           setShowPopup(false);
           setShowFinalResults(true);
-        }, message.includes("draw") ? 1500 : 3000);
+        }, winner === 'draw' ? 1500 : 3000);
         
         setGameResult(message);
       } else {
@@ -312,7 +316,7 @@ const TicTacToeGame = () => {
         setTimeout(() => {
           setShowPopup(false);
           resetBoard();
-        }, message.includes("draw") ? 1500 : 3000);
+        }, winner === 'draw' ? 1500 : 3000);
       }
 
       // Update rounds for compatibility with existing system
@@ -606,7 +610,8 @@ const TicTacToeGame = () => {
         show={showPopup}
         message={gameResult}
         onClose={() => setShowPopup(false)}
-        autoCloseDelay={gameResult.includes("draw") ? 1500 : 3000}
+        autoCloseDelay={3000}
+        isDrawResult={isDrawResult}
       />
 
       {/* Settings Modal */}

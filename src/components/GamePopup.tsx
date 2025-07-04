@@ -6,23 +6,30 @@ interface GamePopupProps {
   message: string;
   onClose: () => void;
   autoCloseDelay?: number;
+  isDrawResult?: boolean;
 }
 
-const GamePopup = ({ show, message, onClose, autoCloseDelay = 3000 }: GamePopupProps) => {
+const GamePopup = ({ 
+  show, 
+  message, 
+  onClose, 
+  autoCloseDelay = 3000,
+  isDrawResult = false 
+}: GamePopupProps) => {
   useEffect(() => {
     if (show) {
       // Auto-close after specified delay (1.5 seconds for draws, 3 seconds for others)
-      const delay = message.includes("draw") ? 1500 : autoCloseDelay;
+      const delay = isDrawResult ? 1500 : autoCloseDelay;
       const timer = setTimeout(() => {
         onClose();
       }, delay);
       return () => clearTimeout(timer);
     }
-  }, [show, onClose, message, autoCloseDelay]);
+  }, [show, onClose, autoCloseDelay, isDrawResult]);
 
   if (!show) return null;
 
-  const isDraw = message.includes("draw");
+  const isDraw = message.includes("draw") || isDrawResult;
   const isSeriesComplete = message.includes("series") || message.includes("match");
 
   return (
