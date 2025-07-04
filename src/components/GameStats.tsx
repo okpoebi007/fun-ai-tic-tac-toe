@@ -2,24 +2,27 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GameStats } from "@/services/settingsService";
 
+interface GameState {
+  totalRounds: number;
+  currentRound: number;
+  stats: {
+    xWins: number;
+    oWins: number;
+    draws: number;
+  };
+  gameMode: 'single-player' | 'two-player';
+  matchType: 'single-game' | 'best-of-7';
+  playerNames?: {
+    x: string;
+    o: string;
+  };
+}
+
 interface GameStatsProps {
   stats: GameStats;
   onClose: () => void;
   onResetStats: () => void;
-  gameState?: {
-    totalRounds: number;
-    currentRound: number;
-    stats: {
-      xWins: number;
-      oWins: number;
-      draws: number;
-    };
-    gameMode: 'single-player' | 'two-player';
-    playerNames?: {
-      x: string;
-      o: string;
-    };
-  };
+  gameState?: GameState;
   matchType?: 'single-game' | 'best-of-7';
 }
 
@@ -69,7 +72,7 @@ const GameStatsComponent = ({
                     Round {gameState.currentRound} of {gameState.totalRounds}
                   </div>
                   <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                    Best of 7 Series
+                    Best of {gameState.totalRounds} Series
                   </div>
                 </div>
               </div>

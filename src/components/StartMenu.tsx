@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { settingsService, type GameSettings, type MatchType } from '@/services/settingsService';
 
+type GameMode = 'single-player' | 'two-player';
+
 interface StartMenuProps {
   onStartGame: (
-    gameMode: 'single-player' | 'two-player', 
+    gameMode: GameMode, 
     matchType: MatchType,
     totalRounds?: number,
     playerNames?: { x: string; o: string }
@@ -17,7 +19,7 @@ interface StartMenuProps {
 }
 
 const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) => {
-  const [selectedMode, setSelectedMode] = useState<'single-player' | 'two-player'>('single-player');
+  const [selectedMode, setSelectedMode] = useState<GameMode>('single-player');
   const [selectedMatchType, setSelectedMatchType] = useState<MatchType>('single-game');
   const [selectedRounds, setSelectedRounds] = useState<number>(7);
   const [playerNames, setPlayerNames] = useState({
@@ -40,7 +42,7 @@ const StartMenu = ({ onStartGame, onShowSettings, settings }: StartMenuProps) =>
     }
   };
 
-  const handleModeChange = (mode: 'single-player' | 'two-player') => {
+  const handleModeChange = (mode: GameMode) => {
     setSelectedMode(mode);
     setShowNameInput(mode === 'two-player' && selectedMatchType === 'best-of-7');
   };

@@ -14,7 +14,10 @@ import { showInterstitialAd } from "@/services/admob";
 
 export type Player = 'X' | 'O' | '';
 export type Board = Player[];
+export type GameMode = 'single-player' | 'two-player';
+export type MatchType = 'single-game' | 'best-of-7';
 
+// Enhanced GameState interface for series management
 interface GameState {
   totalRounds: number;
   currentRound: number;
@@ -23,7 +26,8 @@ interface GameState {
     oWins: number;
     draws: number;
   };
-  gameMode: 'single-player' | 'two-player';
+  gameMode: GameMode;
+  matchType: MatchType;
   playerNames?: {
     x: string;
     o: string;
@@ -42,7 +46,7 @@ const TicTacToeGame = () => {
   const [hasGameOutcome, setHasGameOutcome] = useState(false);
   const [isDrawResult, setIsDrawResult] = useState(false);
   
-  // Enhanced game state for best-of-X series
+  // Enhanced game state for best-of-7 series
   const [gameState, setGameState] = useState<GameState>({
     totalRounds: 7,
     currentRound: 1,
@@ -52,6 +56,7 @@ const TicTacToeGame = () => {
       draws: 0
     },
     gameMode: 'single-player',
+    matchType: 'single-game',
     playerNames: {
       x: 'Player 1',
       o: 'Player 2'
@@ -118,8 +123,8 @@ const TicTacToeGame = () => {
   };
 
   const handleStartGame = (
-    gameMode: 'single-player' | 'two-player', 
-    matchType: 'single-game' | 'best-of-7',
+    gameMode: GameMode, 
+    matchType: MatchType,
     totalRounds: number = 7,
     playerNames?: { x: string; o: string }
   ) => {
@@ -128,22 +133,21 @@ const TicTacToeGame = () => {
     settingsService.saveSettings(newSettings);
     
     // Initialize game state for series
-    if (matchType === 'best-of-7') {
-      setGameState({
-        totalRounds,
-        currentRound: 1,
-        stats: {
-          xWins: 0,
-          oWins: 0,
-          draws: 0
-        },
-        gameMode,
-        playerNames: playerNames || {
-          x: gameMode === 'two-player' ? 'Player 1' : 'You',
-          o: gameMode === 'two-player' ? 'Player 2' : 'AI'
-        }
-      });
-    }
+    setGameState({
+      totalRounds,
+      currentRound: 1,
+      stats: {
+        xWins: 0,
+        oWins: 0,
+        draws: 0
+      },
+      gameMode,
+      matchType,
+      playerNames: playerNames || {
+        x: gameMode === 'two-player' ? 'Player 1' : 'You',
+        o: gameMode === 'two-player' ? 'Player 2' : 'AI'
+      }
+    });
     
     setShowStartMenu(false);
     setShowFinalResults(false);
@@ -163,21 +167,19 @@ const TicTacToeGame = () => {
 
   const resetGame = () => {
     resetBoard();
-    if (settings.matchType === 'best-of-7') {
-      setGameState(prev => ({
-        ...prev,
-        currentRound: 1,
-        stats: {
-          xWins: 0,
-          oWins: 0,
-          draws: 0
-        }
-      }));
-    }
+    setGameState(prev => ({
+      ...prev,
+      currentRound: 1,
+      stats: {
+        xWins: 0,
+        oWins: 0,
+        draws: 0
+      }
+    }));
   };
 
   const nextRound = () => {
-    if (settings.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds) {
+    if (gameState.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds) {
       resetBoard();
     } else {
       newGame();
@@ -188,7 +190,7 @@ const TicTacToeGame = () => {
     if (board[index] !== '' || !gameActive) return;
 
     // In two-player mode, allow both players to move
-    if (settings.gameMode === 'two-player' || currentPlayer === 'X') {
+    if (gameState.gameMode === 'two-player' || currentPlayer === 'X') {
       enhancedSoundService.playTap();
 
       const newBoard = [...board];
@@ -223,14 +225,14 @@ const TicTacToeGame = () => {
       enhancedSoundService.playMove();
 
       // In single-player mode, trigger AI move
-      if (settings.gameMode === 'single-player' && nextPlayer === 'O') {
+      if (gameState.gameMode === 'single-player' && nextPlayer === 'O') {
         setTimeout(() => makeAIMove(newBoard), 800);
       }
     }
   };
 
   const makeAIMove = (currentBoard: Board) => {
-    if (!gameActive || settings.gameMode !== 'single-player') return;
+    if (!gameActive || gameState.gameMode !== 'single-player') return;
 
     const move = getAIMove(currentBoard, settings.aiDifficulty);
     
@@ -265,7 +267,7 @@ const TicTacToeGame = () => {
   };
 
   const endRound = async (message: string, winner: 'X' | 'O' | 'draw') => {
-    if (settings.matchType === 'best-of-7') {
+    if (gameState.matchType === 'best-of-7') {
       // Update game state stats
       const newStats = { ...gameState.stats };
       if (winner === 'X') {
@@ -359,6 +361,7 @@ const TicTacToeGame = () => {
         draws: 0
       },
       gameMode: 'single-player',
+      matchType: 'single-game',
       playerNames: {
         x: 'Player 1',
         o: 'Player 2'
@@ -382,9 +385,9 @@ const TicTacToeGame = () => {
 
   const getPlayerName = (player: Player): string => {
     if (player === 'X') {
-      return gameState.playerNames?.x || (settings.gameMode === 'two-player' ? 'Player X' : 'You');
+      return gameState.playerNames?.x || (gameState.gameMode === 'two-player' ? 'Player X' : 'You');
     } else if (player === 'O') {
-      return gameState.playerNames?.o || (settings.gameMode === 'two-player' ? 'Player O' : 'AI');
+      return gameState.playerNames?.o || (gameState.gameMode === 'two-player' ? 'Player O' : 'AI');
     }
     return '';
   };
@@ -402,20 +405,20 @@ const TicTacToeGame = () => {
   };
 
   const getDifficultyDisplay = () => {
-    if (settings.gameMode === 'two-player') return 'Two Players';
+    if (gameState.gameMode === 'two-player') return 'Two Players';
     return `AI: ${settings.aiDifficulty.charAt(0).toUpperCase() + settings.aiDifficulty.slice(1)}`;
   };
 
   const getCurrentPlayerDisplay = () => {
     if (!gameActive) {
-      return settings.matchType === 'best-of-7' ? "Round Over" : "Game Over";
+      return gameState.matchType === 'best-of-7' ? "Round Over" : "Game Over";
     }
     
     return `${getPlayerName(currentPlayer)}'s turn`;
   };
 
   // Show final results if series is complete
-  if (showFinalResults && settings.matchType === 'best-of-7') {
+  if (showFinalResults && gameState.matchType === 'best-of-7') {
     return (
       <FinalResults
         gameState={gameState}
@@ -481,8 +484,8 @@ const TicTacToeGame = () => {
         </Button>
       </div>
 
-      {/* Top Player Bar - Only show for best-of-7 matches */}
-      {settings.matchType === 'best-of-7' && (
+      {/* Series Progress Bar - Only show for best-of-7 matches */}
+      {gameState.matchType === 'best-of-7' && (
         <Card className="p-4 w-full bg-gradient-to-r from-blue-50 via-gray-50 to-red-50 dark:from-blue-900/20 dark:via-gray-800 dark:to-red-900/20">
           <div className="flex items-center justify-between">
             {/* Player 1 (X) */}
@@ -538,12 +541,12 @@ const TicTacToeGame = () => {
       <Card className="p-6 w-full shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
         <div className="text-center space-y-4">
           {/* Current game stats for single games */}
-          {settings.matchType === 'single-game' && (
+          {gameState.matchType === 'single-game' && (
             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-sm">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="space-y-1">
                   <div className="text-blue-600 dark:text-blue-400 font-semibold">
-                    {settings.gameMode === 'two-player' ? 'Player X' : 'You (X)'}
+                    {gameState.gameMode === 'two-player' ? 'Player X' : 'You (X)'}
                   </div>
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.xWins}</div>
                 </div>
@@ -553,7 +556,7 @@ const TicTacToeGame = () => {
                 </div>
                 <div className="space-y-1">
                   <div className="text-red-600 dark:text-red-400 font-semibold">
-                    {settings.gameMode === 'two-player' ? 'Player O' : 'AI (O)'}
+                    {gameState.gameMode === 'two-player' ? 'Player O' : 'AI (O)'}
                   </div>
                   <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.oWins}</div>
                 </div>
@@ -589,7 +592,7 @@ const TicTacToeGame = () => {
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {hasGameOutcome ? 
-                (settings.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds ? '▶️ Next Round' : '🔄 New Game') 
+                (gameState.matchType === 'best-of-7' && gameState.currentRound <= gameState.totalRounds ? '▶️ Next Round' : '🔄 New Game') 
                 : '🔄 Reset Game'
               }
             </Button>
@@ -628,7 +631,7 @@ const TicTacToeGame = () => {
         <GameStatsComponent
           stats={stats}
           gameState={gameState}
-          matchType={settings.matchType}
+          matchType={gameState.matchType}
           onClose={() => setShowStats(false)}
           onResetStats={resetAllStats}
         />
