@@ -38,7 +38,7 @@ const FinalResults = ({ gameState, onNewGame, onBackToMenu }: FinalResultsProps)
     winnerMessage = `🏆 ${playerNames?.o || (gameMode === 'two-player' ? 'Player O' : 'AI')} wins the series! 🏆`;
   } else {
     seriesWinner = 'draw';
-    winnerMessage = "🤝 The series ended in a tie! 🤝";
+    winnerMessage = "🤝 It's a Tie! The series ended in a draw! 🤝";
   }
 
   const totalGames = xWins + oWins + draws;
@@ -49,7 +49,7 @@ const FinalResults = ({ gameState, onNewGame, onBackToMenu }: FinalResultsProps)
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
           Series Complete!
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">Best of 7 Results</p>
+        <p className="text-gray-600 dark:text-gray-400">Best of {gameState.totalRounds} Results</p>
       </div>
 
       <Card className="p-6 w-full shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
@@ -120,7 +120,7 @@ const FinalResults = ({ gameState, onNewGame, onBackToMenu }: FinalResultsProps)
               <div className="text-center space-y-2">
                 <div className="text-sm text-gray-600 dark:text-gray-400">Series Summary</div>
                 <div className="text-lg font-medium text-gray-800 dark:text-white">
-                  {totalGames} games played over 7 rounds
+                  {totalGames} games played over {gameState.totalRounds} rounds
                 </div>
                 {seriesWinner !== 'draw' && (
                   <div className="text-sm text-gray-600 dark:text-gray-400">
